@@ -72,6 +72,31 @@ class NpmRecipeHandler(RecipeHandler):
         return bindir
 
     @staticmethod
+    def _ensure_npm_fix():
+        """Check if the 'npm-lockfile-fix' command is available in the recipes"""
+        if not TINFOIL.recipes_parsed:
+            TINFOIL.parse_recipes()
+
+        try:
+            d = TINFOIL.parse_recipe("python3-npm-lockfile-fix-native")
+        except bb.providers.NoProvider:
+            bb.error("Nothing provides 'python3-npm-lockfile-fix-native' which is required for the build")
+            bb.note("You will likely need to add a layer that provides python3-npm-lockfile-fix-native")
+            sys.exit(14)
+
+        bindir = d.getVar("STAGING_BINDIR_NATIVE")
+        npmfixpath = os.path.join(bindir, "npm-lockfile-fix")
+
+        if not os.path.exists(npmfixpath):
+            TINFOIL.build_targets("python3-npm-lockfile-fix-native", "addto_recipe_sysroot")
+
+            if not os.path.exists(npmfixpath):
+                bb.error("Failed to add 'npm-lockfile-fix' to sysroot")
+                sys.exit(14)
+
+        return bindir
+
+    @staticmethod
     def _npm_global_configs(dev):
         """Get the npm global configuration"""
         configs = []
@@ -98,6 +123,19 @@ class NpmRecipeHandler(RecipeHandler):
 
         env = NpmEnvironment(d, configs=configs)
         env.run("npm install", workdir=srctree)
+
+    def _run_npm_fix(self, d, srctree, registry, dev):
+        """Run the 'npm fix' command without building the addons"""
+        configs = self._npm_global_configs(dev)
+        configs.append(("ignore-scripts", "true"))
+
+        if registry:
+            configs.append(("registry", registry))
+
+        bb.utils.remove(os.path.join(srctree, "node_modules"), recurse=True)
+
+        env = NpmEnvironment(d, configs=configs)
+        env.run("npm-lockfile-fix ./npm-shrinkwrap.json", workdir=srctree)
 
     def _generate_shrinkwrap(self, d, srctree, dev):
         """Check and generate the 'npm-shrinkwrap.json' file if needed"""
@@ -224,6 +262,14 @@ class NpmRecipeHandler(RecipeHandler):
 
         self._run_npm_install(d, srctree, registry, dev)
         shrinkwrap_file = self._generate_shrinkwrap(d, srctree, dev)
+
+        bindir = self._ensure_npm_fix()
+        d = bb.data.createCopy(TINFOIL.config_data)
+        d.prependVar("PATH", bindir + ":")
+        d.setVar("S", srctree)
+
+        self._run_npm_fix(d, srctree, registry, dev)
+#        os.system("npm-fix-lockfile ./npm-shrinkwrap.json")
 
         with open(shrinkwrap_file, "r") as f:
             shrinkwrap = json.load(f)
