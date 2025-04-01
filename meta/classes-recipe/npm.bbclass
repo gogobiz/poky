@@ -140,8 +140,8 @@ python npm_do_configure() {
         orig_manifest = json.load(f)
 
     cached_manifest = copy.deepcopy(orig_manifest)
-    cached_manifest.pop("dependencies", None)
-    cached_manifest.pop("devDependencies", None)
+#    cached_manifest.pop("dependencies", None)
+#    cached_manifest.pop("devDependencies", None)
 
     has_shrinkwrap_file = True
 
@@ -228,12 +228,12 @@ python npm_do_configure() {
                 cached_manifest[depkey] = {}
             cached_manifest[depkey][name] = version
 
-    if has_shrinkwrap_file:
-        _update_manifest("dependencies")
+#    if has_shrinkwrap_file:
+#        _update_manifest("dependencies")
 
-    if dev:
-        if has_shrinkwrap_file:
-            _update_manifest("devDependencies")
+#    if dev:
+#        if has_shrinkwrap_file:
+#            _update_manifest("devDependencies")
 
     os.chmod(cached_manifest_file, os.stat(cached_manifest_file).st_mode | stat.S_IWUSR)
     with open(cached_manifest_file, "w") as f:
