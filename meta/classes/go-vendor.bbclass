@@ -48,7 +48,7 @@ python do_vendor_unlink() {
     os.unlink(linkname)
 }
 
-addtask vendor_unlink before do_packagedata after do_package
+#addtask vendor_unlink before do_packagedata after do_package
 
 python do_go_vendor() {
     import shutil
